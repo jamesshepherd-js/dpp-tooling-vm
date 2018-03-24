@@ -1,0 +1,76 @@
+Host dev-{{ user.initials }}-work-sandbox1
+  LocalForward 0.0.0.0:7180 localhost:7180
+  LocalForward 0.0.0.0:7183 localhost:7183
+  ProxyCommand ssh bastion.dev-{{ user.initials }}-work.data-platform.io -W %h:%p
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+
+{% for account in ssh.accounts -%}
+Host *.{{ account.domain }}
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+
+{% for env in account.envs -%}
+Host bastion.{{ env }}.{{ account.domain }}
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  DynamicForward 0.0.0.0:8080
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+
+Host bastion-internal.{{ env }}.{{ account.domain }}
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+
+Host {{ env }}-*
+  ProxyCommand ssh bastion.{{ env }}.{{ account.domain }} -W %h:%p
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+
+{% endfor -%}
+{% endfor -%}
+
+Host *-cm-jupyterhub1
+  LocalForward 0.0.0.0:11000 localhost:11000
+
+Host *-freeipa1
+  LocalForward 0.0.0.0:8443 localhost:443
+
+Host *-cm-manager1
+  LocalForward 0.0.0.0:7183 localhost:7183
+
+Host *-cm-jupyterhub1
+  LocalForward 0.0.0.0:8000 localhost:8000
+
+Host dev-{{ user.initials }}-cm-manager1
+  LocalForward 0.0.0.0:7181 localhost:7183
+
+Host dev-{{ user.initials }}1-cm-manager1
+  LocalForward 0.0.0.0:7181 localhost:7183
+
+Host dev-{{ user.initials }}2-cm-manager1
+  LocalForward 0.0.0.0:7182 localhost:7183
+
+{% for bastion in ssh.bastions -%}
+Host {{ bastion.host }}
+  HostName {{ bastion.ip }}
+  DynamicForward 0.0.0.0:8080
+  User {{ user.ssh_username }}
+  StrictHostKeyChecking no
+  ForwardAgent yes
+  ServerAliveInterval 60
+  UserKnownHostsFile /dev/null
+{% endfor -%}

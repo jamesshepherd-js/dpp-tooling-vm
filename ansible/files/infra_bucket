@@ -1,0 +1,35 @@
+#! /bin/bash
+set -euo pipefail
+
+profile="dpp"
+file=""
+sorted="N"
+
+while getopts "p:e:f:s" opt; do
+  case $opt in
+    p)
+      profile="$OPTARG"
+      ;;
+    e)
+      env="$OPTARG"
+      ;;
+    f)
+      file="$OPTARG"
+      ;;
+    s)
+      sorted="Y"
+      ;;
+  esac
+done
+
+url="s3://${profile}-${env}-infrastructure/build/${file}"
+
+if [ "$file" == "" ]; then
+  if [ "$sorted" == "Y" ]; then
+    aws s3 --profile "$profile" ls "$url" | sort
+  else
+    aws s3 --profile "$profile" ls "$url"
+  fi
+else
+  aws s3 --profile "$profile" cp "$url" -
+fi

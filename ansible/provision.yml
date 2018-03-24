@@ -1,0 +1,105 @@
+---
+
+- hosts: all
+  connection: local
+  become: true
+  vars:
+    - local_bin_dir: /usr/local/bin
+    - packer_version: 1.0.0
+    - terraform_version: 0.9.8
+  vars_files:
+    - ../secrets/vars.yml
+  tasks:
+    - name: hostname config (dpp-tooling-vm)
+      replace:
+        dest: "{{ item }}"
+        regexp: '(\s+)ubuntu-xenial(\s+.*)?$'
+        replace: '\1dpp-tooling-vm\2'
+      with_items:
+        - /etc/hosts
+        - /etc/hostname
+    - name: hostnamectl
+      shell: hostnamectl set-hostname dpp-tooling-vm
+    - name: install id_rsa ssh private key
+      copy:
+        src: /vagrant/secrets/id_rsa
+        dest: /home/{{ vagrant_user }}/.ssh/id_rsa
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0600
+    - name: ssh config
+      template:
+          src: templates/ssh_config.j2
+          dest: /home/{{ vagrant_user }}/.ssh/config
+          owner: "{{ vagrant_user }}"
+          group: "{{ vagrant_user }}"
+          mode: 0500
+    - name: install extra packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git-crypt
+        - direnv
+        - virtualenv
+    - name: tmux.conf
+      copy:
+        src: /vagrant/ansible/files/tmux.conf
+        dest: /home/{{ vagrant_user }}/.tmux.conf
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0644
+    - include: tasks/common.yml
+    - name: install packer
+      include: tasks/hashicorp_install.yml tool_name=packer tool_version={{packer_version}}
+    - name: install terraform
+      include: tasks/hashicorp_install.yml tool_name=terraform tool_version={{terraform_version}}
+    - name: .bash_aliases
+      copy:
+        src: /vagrant/ansible/files/bash_aliases
+        dest: /home/{{ vagrant_user }}/.bash_aliases
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0500
+    - name: mkdir ~/.aws
+      file:
+        path: /home/{{ vagrant_user }}/.aws
+        state: directory
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0755
+    - name: add ~/.aws/config
+      copy:
+        src: /vagrant/secret/aws_config
+        dest: /home/{{ vagrant_user }}/.aws/config
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0500
+    - name: add ~/.aws/credentials
+      template:
+        src: /vagrant/ansible/templates/aws_credentials.j2
+        dest: /home/{{ vagrant_user }}/.aws/credentials
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0500
+    - name: git config
+      shell: "{{ item }}"
+      with_items:
+       - "su -c \"git config --global user.name '{{ user.full_name }}'\" - {{ vagrant_user }}"
+       - "su -c \"git config --global user.email '{{ user.email }}'\" - {{ vagrant_user }}"
+       - "su -c \"git config --global merge.ff yes\" - {{ vagrant_user }}"
+       - "su -c \"git config --global color.ui auto\" - {{ vagrant_user }}"
+    - name: mkdir ~/bin
+      file:
+        path: /home/{{ vagrant_user }}/bin
+        state: directory
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0755
+    - name: infra bucket view script
+      copy:
+        src: /vagrant/ansible/files/infra_bucket
+        dest: /home/{{ vagrant_user }}/bin/infra_bucket
+        owner: "{{ vagrant_user }}"
+        group: "{{ vagrant_user }}"
+        mode: 0700
