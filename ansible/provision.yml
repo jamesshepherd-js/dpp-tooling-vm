@@ -70,7 +70,7 @@
         mode: 0755
     - name: add ~/.aws/config
       copy:
-        src: /vagrant/secret/aws_config
+        src: /vagrant/secrets/aws_config
         dest: /home/{{ vagrant_user }}/.aws/config
         owner: "{{ vagrant_user }}"
         group: "{{ vagrant_user }}"
